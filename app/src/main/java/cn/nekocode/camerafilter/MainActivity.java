@@ -16,6 +16,7 @@
 package cn.nekocode.camerafilter;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Bundle;
@@ -23,11 +24,14 @@ import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.TextureView;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
@@ -48,6 +52,8 @@ public class MainActivity extends AppCompatActivity {
     private CameraRenderer renderer;
     private TextureView textureView;
     private int filterId = R.id.filter0;
+    private ScaleGestureDetector mScaleGestureDetector;
+    private float mScaleFactor = 1.0f;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,11 +95,20 @@ public class MainActivity extends AppCompatActivity {
         textureView = new TextureView(this);
         container.addView(textureView);
         textureView.setSurfaceTextureListener(renderer);
+        mScaleGestureDetector = new ScaleGestureDetector(this, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            @Override
+            public boolean onScale(ScaleGestureDetector detector) {
+                int scale = (int)((renderer.getZoom() + 1) * detector.getScaleFactor());
+                renderer.setZoom(scale);
+                return true;
+            }
+        });
 
         // Show original frame when touch the view
         textureView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
+                mScaleGestureDetector.onTouchEvent(event);
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         renderer.setSelectedFilter(R.id.filter0);
@@ -108,12 +123,30 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+
         textureView.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
             @Override
             public void onLayoutChange(View v, int left, int top, int right, int bottom, int oldLeft, int oldTop, int oldRight, int oldBottom) {
                 renderer.onSurfaceTextureSizeChanged(null, v.getWidth(), v.getHeight());
             }
         });
+        Display display = ((WindowManager)
+                getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
+        int screenOrientation = display.getRotation();
+        int angle;
+        if (screenOrientation == 1) {
+            angle = 270;
+        }
+        else if(screenOrientation == 3) {
+            angle = 90;
+        }
+        else if(screenOrientation == 2) {
+            angle = 180;
+        }
+        else {
+            angle = 0;
+        }
+        textureView.setRotation(angle);
     }
 
     @Override
@@ -133,6 +166,9 @@ public class MainActivity extends AppCompatActivity {
                             "Save failed!",
                     Toast.LENGTH_SHORT).show();
             return true;
+        }
+        if (filterId == R.id.baseline) {
+            renderer.setDrawBaseline(item.isChecked());
         }
 
         setTitle(item.getTitle());

@@ -33,28 +33,14 @@ import javax.microedition.khronos.egl.EGLContext;
 import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.egl.EGLSurface;
 
-import cn.nekocode.camerafilter.filter.AsciiArtFilter;
-import cn.nekocode.camerafilter.filter.BasicDeformFilter;
-import cn.nekocode.camerafilter.filter.BlueorangeFilter;
+import cn.nekocode.camerafilter.filter.BlackWhiteFilter;
+import cn.nekocode.camerafilter.filter.BlackWhiteInverseFilter;
+import cn.nekocode.camerafilter.filter.BlueYellowFilter;
+import cn.nekocode.camerafilter.filter.BlueYellowInverseFilter;
 import cn.nekocode.camerafilter.filter.CameraFilter;
-import cn.nekocode.camerafilter.filter.ChromaticAberrationFilter;
 import cn.nekocode.camerafilter.filter.ContrastFilter;
-import cn.nekocode.camerafilter.filter.CrackedFilter;
-import cn.nekocode.camerafilter.filter.CrosshatchFilter;
-import cn.nekocode.camerafilter.filter.EMInterferenceFilter;
 import cn.nekocode.camerafilter.filter.EdgeDetectionFilter;
-import cn.nekocode.camerafilter.filter.JFAVoronoiFilter;
-import cn.nekocode.camerafilter.filter.LegofiedFilter;
-import cn.nekocode.camerafilter.filter.LichtensteinEsqueFilter;
-import cn.nekocode.camerafilter.filter.MappingFilter;
-import cn.nekocode.camerafilter.filter.MoneyFilter;
-import cn.nekocode.camerafilter.filter.NoiseWarpFilter;
 import cn.nekocode.camerafilter.filter.OriginalFilter;
-import cn.nekocode.camerafilter.filter.PixelizeFilter;
-import cn.nekocode.camerafilter.filter.PolygonizationFilter;
-import cn.nekocode.camerafilter.filter.RefractionFilter;
-import cn.nekocode.camerafilter.filter.TileMosaicFilter;
-import cn.nekocode.camerafilter.filter.TrianglesMosaicFilter;
 
 /**
  * @author nekocode (nekocode.cn@gmail.com)
@@ -81,6 +67,7 @@ public class CameraRenderer implements Runnable, TextureView.SurfaceTextureListe
     private CameraFilter selectedFilter;
     private int selectedFilterId = R.id.filter0;
     private SparseArray<CameraFilter> cameraFilterMap = new SparseArray<>();
+    private boolean drawBaseline;
 
     public CameraRenderer(Context context) {
         this.context = context;
@@ -135,6 +122,25 @@ public class CameraRenderer implements Runnable, TextureView.SurfaceTextureListe
         selectedFilter = cameraFilterMap.get(id);
         if (selectedFilter != null)
             selectedFilter.onAttach();
+        else {
+            selectedFilter = cameraFilterMap.get(R.id.filter0);
+            selectedFilter.onAttach();
+        }
+    }
+
+    public int getZoom() {
+        return camera.getParameters().getZoom();
+    }
+
+    public void setZoom(int value) {
+        Camera.Parameters params = camera.getParameters();
+        params.setZoom(value);
+        camera.setParameters(params);
+    }
+
+
+    public void setDrawBaseline(boolean value) {
+        drawBaseline = value;
     }
 
     @Override
@@ -143,26 +149,12 @@ public class CameraRenderer implements Runnable, TextureView.SurfaceTextureListe
 
         // Setup camera filters map
         cameraFilterMap.append(R.id.filter0, new OriginalFilter(context));
+        cameraFilterMap.append(R.id.filter2, new ContrastFilter(context));
         cameraFilterMap.append(R.id.filter1, new EdgeDetectionFilter(context));
-        cameraFilterMap.append(R.id.filter2, new PixelizeFilter(context));
-        cameraFilterMap.append(R.id.filter3, new EMInterferenceFilter(context));
-        cameraFilterMap.append(R.id.filter4, new TrianglesMosaicFilter(context));
-        cameraFilterMap.append(R.id.filter5, new LegofiedFilter(context));
-        cameraFilterMap.append(R.id.filter6, new TileMosaicFilter(context));
-        cameraFilterMap.append(R.id.filter7, new BlueorangeFilter(context));
-        cameraFilterMap.append(R.id.filter8, new ChromaticAberrationFilter(context));
-        cameraFilterMap.append(R.id.filter9, new BasicDeformFilter(context));
-        cameraFilterMap.append(R.id.filter10, new ContrastFilter(context));
-        cameraFilterMap.append(R.id.filter11, new NoiseWarpFilter(context));
-        cameraFilterMap.append(R.id.filter12, new RefractionFilter(context));
-        cameraFilterMap.append(R.id.filter13, new MappingFilter(context));
-        cameraFilterMap.append(R.id.filter14, new CrosshatchFilter(context));
-        cameraFilterMap.append(R.id.filter15, new LichtensteinEsqueFilter(context));
-        cameraFilterMap.append(R.id.filter16, new AsciiArtFilter(context));
-        cameraFilterMap.append(R.id.filter17, new MoneyFilter(context));
-        cameraFilterMap.append(R.id.filter18, new CrackedFilter(context));
-        cameraFilterMap.append(R.id.filter19, new PolygonizationFilter(context));
-        cameraFilterMap.append(R.id.filter20, new JFAVoronoiFilter(context));
+        cameraFilterMap.append(R.id.filter3, new BlackWhiteFilter(context));
+        cameraFilterMap.append(R.id.filter4, new BlackWhiteInverseFilter(context));
+        cameraFilterMap.append(R.id.filter5, new BlueYellowFilter(context));
+        cameraFilterMap.append(R.id.filter6, new BlueYellowInverseFilter(context));
         setSelectedFilter(selectedFilterId);
 
         // Create texture for camera preview
@@ -173,6 +165,10 @@ public class CameraRenderer implements Runnable, TextureView.SurfaceTextureListe
         try {
             camera.setPreviewTexture(cameraSurfaceTexture);
             camera.startPreview();
+            Camera.Parameters params = camera.getParameters();
+            params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+            params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+            camera.setParameters(params);
         } catch (IOException ioe) {
             // Something bad happened
         }
@@ -192,6 +188,8 @@ public class CameraRenderer implements Runnable, TextureView.SurfaceTextureListe
 
                 // Draw camera preview
                 selectedFilter.draw(cameraTextureId, gwidth, gheight);
+                if(drawBaseline) {
+                }
 
                 // Flush
                 GLES20.glFlush();
